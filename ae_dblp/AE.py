@@ -11,6 +11,7 @@ class AE_encoder(nn.Module):
 
         self.enc_2 = nn.Conv2d(n_input, ae_n_enc_1, kernel_size=3, stride=1, padding=1)
         self.enc_3 = nn.Conv2d(ae_n_enc_1, ae_n_enc_1, kernel_size=3, stride=2, padding=1)
+        self.enc_3_4 = nn.Conv2d(ae_n_enc_1, ae_n_enc_1, kernel_size=3, stride=1, padding=1)
 
         self.enc_4 = nn.Conv2d(ae_n_enc_1, ae_n_enc_2, kernel_size=5, stride=3, padding=3)
         self.enc_5 = nn.Conv2d(ae_n_enc_2, 256, kernel_size=5, stride=3, padding=2)
@@ -28,7 +29,8 @@ class AE_encoder(nn.Module):
 
         z_res = self.bn1(self.res_1(z))
         z = self.act(self.enc_2(z))
-        z = self.act(self.enc_3(z)+z_res)
+        z = self.act(self.enc_3(z))
+        z = self.act(self.bn1(self.enc_3_4(z))+z_res)
 
         z = self.act(self.enc_4(z))
         z = self.act(self.enc_5(z))
@@ -50,6 +52,7 @@ class AE_decoder(nn.Module):
         self.dec_1 = nn.ConvTranspose2d(256, ae_n_dec_1, kernel_size=5, stride=3, padding=2, output_padding=2)
         self.dec_2 = nn.ConvTranspose2d(ae_n_dec_1, ae_n_dec_2, kernel_size=5, stride=3, padding=3, output_padding=2)
 
+        self.dec_2_3 = nn.ConvTranspose2d(ae_n_dec_2, ae_n_dec_2, kernel_size=3, stride=1, padding=1, output_padding=0)
         self.dec_3 = nn.ConvTranspose2d(ae_n_dec_2, ae_n_dec_2, kernel_size=3, stride=2, padding=1, output_padding=1)
         self.dec_4 = nn.ConvTranspose2d(ae_n_dec_2, n_input, kernel_size=3, stride=1, padding=1, output_padding=0)
 
@@ -57,6 +60,7 @@ class AE_decoder(nn.Module):
 
         self.res_1 = nn.ConvTranspose2d(ae_n_dec_2, n_input, kernel_size=2, stride=2, padding=0, output_padding=0)
         self.bn1 = nn.BatchNorm2d(n_input)
+
         self.act = nn.LeakyReLU(0.2, inplace=True)
 
     def forward(self, z_ae):
@@ -66,9 +70,11 @@ class AE_decoder(nn.Module):
         z = z.view(z.size(0), -1, 3, 3)  # Adjust the dimensions to match the expected input for the first layer
         z = self.act(self.dec_1(z))
         z = self.act(self.dec_2(z))
+
         z_res = self.bn1(self.res_1(z))
+        z = self.act(self.dec_2_3(z))
         z = self.act(self.dec_3(z))
-        z = self.act(self.dec_4(z)+z_res)
+        z = self.act(self.bn1(self.dec_4(z))+z_res)
         x_hat = torch.sigmoid(self.dec_5(z))
         return x_hat
 
