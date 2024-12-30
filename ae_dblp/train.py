@@ -1,11 +1,12 @@
 import torch
 from opt import args
-from utils import eva
+from utils import eva, target_distribution
 from torch.optim import Adam
 import torch.nn.functional as F
 from sklearn.cluster import KMeans
 
 from sklearn.cluster import AgglomerativeClustering
+
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
 
@@ -18,12 +19,13 @@ use_adjust_lr = []
 
 def Pretrain_ae(model, dataset, y, train_loader, device):
     optimizer = Adam(model.parameters(), lr=args.lr)
+    loss_arr = []
     for epoch in range(args.epoch):
         # if (args.name in use_adjust_lr):
         #     adjust_learning_rate(optimizer, epoch)
         for batch_idx, (x, _) in enumerate(train_loader):
             x = x.to(device)
-            x_hat, _ = model(x)
+            x_hat, _, q, q1 = model(x)
             loss = F.mse_loss(x_hat, x)
             optimizer.zero_grad()
             loss.backward()
@@ -31,9 +33,19 @@ def Pretrain_ae(model, dataset, y, train_loader, device):
 
         with torch.no_grad():
             x = torch.Tensor(dataset.x).to(device).float()
-            x_hat, z = model(x)
+            x_hat, z, q, q1 = model(x)
+
+            tmp_q = q.data
+            p = target_distribution(tmp_q)
+
+
             loss = F.mse_loss(x_hat, x)
+            loss_kl = F.kl_div((q.log() + q1.log()) / 3, p, reduction='batchmean')
+            loss = 0.001*loss - 10 * loss_kl
+            loss_arr.append(loss.data.cpu().item())
             print('{} loss: {}'.format(epoch, loss))
+
+
 
             kmeans = KMeans(n_clusters=args.n_clusters, n_init=20).fit(z.data.cpu().numpy())
             hierarchical_clustering = AgglomerativeClustering(n_clusters=5, affinity='chebyshev', linkage='single')
@@ -66,6 +78,6 @@ def Pretrain_ae(model, dataset, y, train_loader, device):
             f1_result.append(f1)
 
             torch.save(model.state_dict(), args.model_save_path)
-
+    print(loss_arr)
     print(acc_reuslt)
     print(model)

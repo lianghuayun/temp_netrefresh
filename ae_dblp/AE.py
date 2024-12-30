@@ -2,6 +2,8 @@ from torch import nn
 from torch.nn import Linear
 import torch
 
+import torch.nn.functional as F
+
 class AE_encoder(nn.Module):
 
     def __init__(self, ae_n_enc_1, ae_n_enc_2, n_input, n_z):
@@ -96,7 +98,27 @@ class AE(nn.Module):
             n_input=n_input,
             n_z=n_z)
 
+        self.cluster_layer = nn.Parameter(torch.Tensor(5, 2048), requires_grad=True)
+        torch.nn.init.xavier_normal_(self.cluster_layer.data)
     def forward(self, x):
         z_ae = self.encoder(x)
-        x_hat = self.decoder(z_ae)
-        return x_hat, z_ae
+
+        z_l = 0.5 * z_ae
+        s = torch.mm(z_l, z_l.t())
+        s = F.softmax(s, dim=1)
+        z_g = torch.mm(s, z_l)
+        z_tilde = 0.1 * z_g + z_l
+
+
+        x_hat = self.decoder(z_tilde)
+
+
+        q = 1.0 / (1.0 + torch.sum(torch.pow((z_tilde).unsqueeze(1) - self.cluster_layer, 2), 2))
+        q = q.pow((1.0 + 1.0) / 2.0)
+        q = (q.t() / torch.sum(q, 1)).t()
+
+        q1 = 1.0 / (1.0 + torch.sum(torch.pow(z_ae.unsqueeze(1) - self.cluster_layer, 2), 2))
+        q1 = q1.pow((1.0 + 1.0) / 2.0)
+        q1 = (q1.t() / torch.sum(q1, 1)).t()
+
+        return x_hat, z_ae, q, q1
