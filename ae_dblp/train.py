@@ -1,7 +1,7 @@
 import torch
 from opt import args
 from utils import eva, target_distribution
-from torch.optim import Adam
+from torch.optim import Adam, AdamW
 import torch.nn.functional as F
 from sklearn.cluster import KMeans
 
@@ -18,7 +18,7 @@ use_adjust_lr = []
 
 
 def Pretrain_ae(model, dataset, y, train_loader, device):
-    optimizer = Adam(model.parameters(), lr=args.lr)
+    optimizer = AdamW(model.parameters(), lr=args.lr, weight_decay=0.01)
     loss_arr = []
     for epoch in range(args.epoch):
         # if (args.name in use_adjust_lr):
@@ -40,8 +40,8 @@ def Pretrain_ae(model, dataset, y, train_loader, device):
 
 
             loss = F.mse_loss(x_hat, x)
-            loss_kl = F.kl_div((q.log() + q1.log()) / 3, p, reduction='batchmean')
-            loss = 0.001*loss - 10 * loss_kl
+            loss_kl = F.kl_div((q.log() + q1.log()) / 2, p, reduction='batchmean')
+            loss = 0.001*loss + 100000 * loss_kl
             loss_arr.append(loss.data.cpu().item())
             print('{} loss: {}'.format(epoch, loss))
 
