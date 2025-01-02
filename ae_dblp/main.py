@@ -41,6 +41,8 @@ class LoadDataset(Dataset):
 x = np.loadtxt(args.data_path, dtype=float)
 y = np.loadtxt(args.label_path, dtype=int)
 
+
+
 scattering = Scattering1D(J=2, shape=x[0].shape)
 x = scattering(x)[:,0,:]
 

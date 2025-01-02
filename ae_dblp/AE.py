@@ -15,22 +15,13 @@ class AE_encoder(nn.Module):
         self.enc_3 = nn.Conv2d(ae_n_enc_1, ae_n_enc_1, kernel_size=3, stride=2, padding=1)
         self.enc_3_4 = nn.Conv2d(ae_n_enc_1, ae_n_enc_1, kernel_size=3, stride=1, padding=1)
 
-        self.enc_2r = nn.Conv2d(ae_n_enc_1, 64, kernel_size=3, stride=1, padding=1)
-        self.enc_3r = nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1)
-        self.enc_3_4r = nn.Conv2d(64, ae_n_enc_1, kernel_size=3, stride=1, padding=1)
 
         self.enc_4 = nn.Conv2d(ae_n_enc_1, ae_n_enc_2, kernel_size=5, stride=3, padding=3)
-        self.enc_4_5 = nn.Conv2d(ae_n_enc_2, 256, kernel_size=3, stride=1, padding=1)
-
-        self.enc_4r = nn.Conv2d(256, 512, kernel_size=3, stride=1, padding=1)
-        self.enc_4_5r = nn.Conv2d(512, 256, kernel_size=3, stride=1, padding=1)
-
-        self.enc_5 = nn.Conv2d(256, 256, kernel_size=5, stride=3, padding=2)
+        self.enc_5 = nn.Conv2d(ae_n_enc_2, 256, kernel_size=5, stride=3, padding=2)
 
         self.res_1 = nn.Conv2d(n_input, ae_n_enc_1, kernel_size=2, stride=2, padding=0)
         self.bn1 = nn.BatchNorm2d(ae_n_enc_1)
-        self.res_2 = nn.Conv2d(ae_n_enc_1, 256, kernel_size=1, stride=3, padding=0)
-        self.bn2 = nn.BatchNorm2d(256)
+
         # The final layer will produce a 1D output
         self.z_layer1 = Linear(256 * 3 * 3, 2048)
         # self.z_layer2 = Linear(2048, 1024)
@@ -45,26 +36,8 @@ class AE_encoder(nn.Module):
         z = self.act(self.enc_3(z))
         z = self.act(self.bn1(self.enc_3_4(z))+z_res)
 
-        z_res = self.bn1(z)
-        z = self.act(self.enc_2r(z))
-        z = self.act(self.enc_3r(z))
-        z = self.act(self.bn1(self.enc_3_4r(z))+z_res)
-        z_res = self.bn1(z)
-        z = self.act(self.enc_2r(z))
-        z = self.act(self.enc_3r(z))
-        z = self.act(self.bn1(self.enc_3_4r(z))+z_res)
 
-        z_res = self.bn2(self.res_2(z))
         z = self.act(self.enc_4(z))
-        z = self.act(self.bn2(self.enc_4_5(z)) + z_res)
-
-        z_res = self.bn2(z)
-        z = self.act(self.enc_4r(z))
-        z = self.act(self.bn2(self.enc_4_5r(z))+z_res)
-        z_res = self.bn2(z)
-        z = self.act(self.enc_4r(z))
-        z = self.act(self.bn2(self.enc_4_5r(z))+z_res)
-
         z = self.act(self.enc_5(z))
         z = z.view(z.size(0), -1)
         # z = self.act(self.z_layer1(z))
@@ -81,28 +54,17 @@ class AE_decoder(nn.Module):
         # self.z_layer1 = Linear(n_z, 1024)
         # self.z_layer2 = Linear(1024, 2048)
         self.z_layer1 = Linear(2048, 256 * 3 * 3)
-        self.dec_1 = nn.ConvTranspose2d(256, 256, kernel_size=5, stride=3, padding=2, output_padding=2)
-
-        self.dec_1_2 = nn.ConvTranspose2d(256, ae_n_dec_1, kernel_size=3, stride=1, padding=1, output_padding=0)
+        self.dec_1 = nn.ConvTranspose2d(256, ae_n_dec_1, kernel_size=5, stride=3, padding=2, output_padding=2)
         self.dec_2 = nn.ConvTranspose2d(ae_n_dec_1, ae_n_dec_2, kernel_size=5, stride=3, padding=3, output_padding=2)
-
-        self.dec_1_2r = nn.ConvTranspose2d(ae_n_dec_2, 64, kernel_size=3, stride=1, padding=1, output_padding=0)
-        self.dec_2r = nn.ConvTranspose2d(64, ae_n_dec_2, kernel_size=3, stride=1, padding=1, output_padding=0)
 
         self.dec_2_3 = nn.ConvTranspose2d(ae_n_dec_2, ae_n_dec_2, kernel_size=3, stride=1, padding=1, output_padding=0)
         self.dec_3 = nn.ConvTranspose2d(ae_n_dec_2, ae_n_dec_2, kernel_size=3, stride=2, padding=1, output_padding=1)
         self.dec_4 = nn.ConvTranspose2d(ae_n_dec_2, n_input, kernel_size=3, stride=1, padding=1, output_padding=0)
 
-        self.dec_2_3r = nn.ConvTranspose2d(n_input, 64, kernel_size=3, stride=1, padding=1, output_padding=0)
-        self.dec_3r = nn.ConvTranspose2d(64, 64, kernel_size=3, stride=1, padding=1, output_padding=0)
-        self.dec_4r = nn.ConvTranspose2d(64, n_input, kernel_size=3, stride=1, padding=1, output_padding=0)
-
         self.dec_5 = nn.ConvTranspose2d(n_input, n_input, kernel_size=3, stride=2, padding=1, output_padding=1)
 
         self.res_1 = nn.ConvTranspose2d(ae_n_dec_2, n_input, kernel_size=2, stride=2, padding=0, output_padding=0)
         self.bn1 = nn.BatchNorm2d(n_input)
-        self.res_2 = nn.ConvTranspose2d(256, ae_n_dec_2, kernel_size=5, stride=3, padding=2, output_padding=0)
-        self.bn2 = nn.BatchNorm2d(ae_n_dec_2)
 
         self.act = nn.LeakyReLU(0.2, inplace=True)
 
@@ -112,31 +74,12 @@ class AE_decoder(nn.Module):
         # z = self.act(self.z_layer3(z))
         z = z.view(z.size(0), -1, 3, 3)  # Adjust the dimensions to match the expected input for the first layer
         z = self.act(self.dec_1(z))
-
-        z_res = self.bn2(self.res_2(z))
-        z = self.act(self.dec_1_2(z))
-        z = self.act(self.bn2(self.dec_2(z))+z_res)
-
-        z_res = self.bn2(z)
-        z = self.act(self.dec_1_2r(z))
-        z = self.act(self.bn2(self.dec_2r(z))+z_res)
-        z_res = self.bn2(z)
-        z = self.act(self.dec_1_2r(z))
-        z = self.act(self.bn2(self.dec_2r(z))+z_res)
+        z = self.act(self.dec_2(z))
 
         z_res = self.bn1(self.res_1(z))
         z = self.act(self.dec_2_3(z))
         z = self.act(self.dec_3(z))
         z = self.act(self.bn1(self.dec_4(z))+z_res)
-
-        z_res = self.bn1(z)
-        z = self.act(self.dec_2_3r(z))
-        z = self.act(self.dec_3r(z))
-        z = self.act(self.bn1(self.dec_4r(z))+z_res)
-        z_res = self.bn1(z)
-        z = self.act(self.dec_2_3r(z))
-        z = self.act(self.dec_3r(z))
-        z = self.act(self.bn1(self.dec_4r(z))+z_res)
 
         x_hat = torch.sigmoid(self.dec_5(z))
         return x_hat

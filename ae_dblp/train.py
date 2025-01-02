@@ -27,6 +27,7 @@ def Pretrain_ae(model, dataset, y, train_loader, device):
             x = x.to(device)
             x_hat, _, q, q1 = model(x)
             loss = F.mse_loss(x_hat, x)
+
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
